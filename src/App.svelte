@@ -1,11 +1,17 @@
 <script>
-  import { timingSafeEqual } from "crypto";
-
-  import { db } from "./firebase.js";
-  import toastr from "toastr";
+  import { db } from "./firebase";
+  import {
+    onSnapshot,
+    collection,
+    addDoc,
+    deleteDoc,
+    doc,
+    updateDoc,
+  } from "firebase/firestore";
+  import Toastify from "toastify-js";
 
   let task = {
-    name: "",
+    title: "",
     description: "",
   };
 
@@ -15,52 +21,62 @@
   let editStatus = false;
   let currentId = "";
 
-  db.collection("tasks")
-    .orderBy("createdAt", "asc")
-    .onSnapshot((querySnapshot) => {
-      let docs = [];
-      querySnapshot.forEach((doc) => {
-        docs.push({ ...doc.data(), id: doc.id });
-      });
-      tasks = [...docs];
-      console.log(tasks);
-    });
+  onSnapshot(
+    collection(db, "tasks"),
+    (querySnapshot) => {
+      tasks = querySnapshot.docs.map((doc) => ({
+        ...doc.data(),
+        id: doc.id,
+      }));
+    },
+    (err) => {
+      console.error(err);
+    }
+  );
 
   const addTask = async () => {
     try {
-      await db
-        .collection("tasks")
-        .doc()
-        .set({ ...task, createdAt: Date.now() });
-      console.log("new Task created");
+      await addDoc(collection(db, "tasks"), {
+        ...task,
+        createdAt: Date.now(),
+      });
+      Toastify({
+        text: "New Task created",
+      }).showToast();
     } catch (error) {
       console.error(error);
     }
   };
 
   const deleteTask = async (id) => {
-    await db.collection("tasks").doc(id).delete();
+    try {
+      await deleteDoc(doc(db, "tasks", id));
+    } catch (error) {
+      console.error(error);
+    }
   };
 
   const editTask = (currenTask) => {
     currentId = currenTask.id;
-    task.name = currenTask.name;
+    task.title = currenTask.title;
     task.description = currenTask.description;
 
     editStatus = true;
   };
 
   const updateTask = async () => {
-    await db.collection("tasks").doc(currentId).update(task);
-    toastr.success("Product Updated Successfully", "", {
-      timeOut: 1000,
-      progressBar: true,
-      positionClass: "toast-bottom-right",
-    });
+    try {
+      await updateDoc(doc(db, "tasks", currentId), task);
+      Toastify({
+        text: "Task updated",
+      }).showToast();
+    } catch (error) {
+      console.error(error);
+    }
   };
 
   const handleSubmit = () => {
-    if (!task.name) return;
+    if (!task.title) return;
 
     if (!editStatus) {
       addTask();
@@ -70,64 +86,71 @@
       currentId = "";
     }
 
-    task = { name: "", description: "" };
+    task = { title: "", description: "" };
     inputElement.focus();
   };
 
   const onCancel = () => {
     editStatus = false;
     currentId = "";
-    task = { name: "", description: "" };
+    task = { title: "", description: "" };
   };
 </script>
-
-<style>
-
-</style>
 
 <!-- TEMPLATE -->
 <div class="container p-4">
   <div class="row">
-    <div class="col-md-4 offset-md-4">
-      <form on:submit|preventDefault={handleSubmit} class="card card-body">
-        <div class="form-group">
+    <div class="col-md-6 offset-md-3">
+      <!-- Task Form -->
+      <form on:submit|preventDefault={handleSubmit} class="card card-body p-5">
+        <div class="mb-3">
+          <label for="title" class="fs-5 text-secondary">Title</label>
           <input
             type="text"
-            bind:value={task.name}
+            bind:value={task.title}
             bind:this={inputElement}
-            placeholder="Write a new Task"
-            class="form-control" />
+            placeholder="My important task"
+            class="form-control"
+          />
         </div>
 
-        <div class="form-group">
+        <div class="mb-2">
+          <label for="description" class="fs-5 text-secondary"
+            >Description</label
+          >
           <textarea
             bind:value={task.description}
             rows="3"
             placeholder="Write a Task Description"
-            class="form-control" />
+            class="form-control"
+          />
         </div>
 
-        <div class="ml-auto mt-1">
-          <button class="btn btn-primary">
-            <i class="material-icons" style="vertical-align:middle;">save</i>
-            <span style="vertical-align:middle">
+        <div class="d-flex gap-2 mt-2">
+          <button class="btn btn-primary btn-sm d-flex" disabled={!task.title}>
+            <i class="material-icons">save</i>
+            <span class="ms-2">
               {#if !editStatus}Save{:else}Update{/if}
             </span>
           </button>
           {#if editStatus}
-            <button on:click={onCancel} class="btn btn-info">Cancel</button>
+            <button on:click={onCancel} class="btn btn-info btn-sm"
+              >Cancel</button
+            >
           {/if}
         </div>
       </form>
 
+      <!-- Render all Tasks -->
       {#each tasks as task}
         <div class="card card-body mt-2">
           <div class="d-flex justify-content-between">
-            <h5>{task.name}</h5>
+            <h5>{task.title}</h5>
             <i
               class="material-icons"
               style="vertical-align:middle;"
-              on:click={editTask(task)}>
+              on:click={editTask(task)}
+            >
               edit
             </i>
           </div>
@@ -145,3 +168,6 @@
     </div>
   </div>
 </div>
+
+<style>
+</style>
