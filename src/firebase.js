@@ -3,7 +3,7 @@ import { getFirestore } from "firebase/firestore";
 
 // Your web app's Firebase configuration
 var firebaseConfig = {
-  // put your credentials here
+  // put your credentials
 };
 
 // Initialize Firebase

@@ -9,6 +9,7 @@
     updateDoc,
   } from "firebase/firestore";
   import Toastify from "toastify-js";
+  import { onDestroy } from "svelte";
 
   let task = {
     title: "",
@@ -21,7 +22,7 @@
   let editStatus = false;
   let currentId = "";
 
-  onSnapshot(
+  const unsub = onSnapshot(
     collection(db, "tasks"),
     (querySnapshot) => {
       tasks = querySnapshot.docs.map((doc) => ({
@@ -95,6 +96,8 @@
     currentId = "";
     task = { title: "", description: "" };
   };
+
+  onDestroy(unsub);
 </script>
 
 <!-- TEMPLATE -->
